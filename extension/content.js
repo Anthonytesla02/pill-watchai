@@ -168,23 +168,35 @@
     document.head.appendChild(style);
   }
 
+  // Extract words from text to check individually
+  function extractWords(text) {
+    return text.toLowerCase().split(/\s+/).filter(word => word.length >= 3);
+  }
+
   // Check input value for drug matches
   const checkForDrugs = debounce(async (value) => {
     if (!value || value.length < 3) return;
 
-    try {
-      const matches = await chrome.runtime.sendMessage({
-        type: 'CHECK_DRUG',
-        text: value
-      });
+    // Check both the full text and individual words
+    const wordsToCheck = [value, ...extractWords(value)];
+    
+    for (const word of wordsToCheck) {
+      if (word.length < 3) continue;
+      
+      try {
+        const matches = await chrome.runtime.sendMessage({
+          type: 'CHECK_DRUG',
+          text: word
+        });
 
-      if (matches && matches.length > 0) {
-        // Only show notifications for expired or expiring drugs
-        const alertDrugs = matches.filter(d => d.status === 'expired' || d.status === 'expiring');
-        alertDrugs.forEach(drug => createNotification(drug));
+        if (matches && matches.length > 0) {
+          // Show notifications for expired or expiring drugs
+          const alertDrugs = matches.filter(d => d.status === 'expired' || d.status === 'expiring');
+          alertDrugs.forEach(drug => createNotification(drug));
+        }
+      } catch (error) {
+        console.error('Drug Expiry Tracker: Error checking drugs', error);
       }
-    } catch (error) {
-      console.error('Drug Expiry Tracker: Error checking drugs', error);
     }
   }, 300);
 

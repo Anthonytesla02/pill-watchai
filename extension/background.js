@@ -2,7 +2,7 @@
 
 const STORAGE_KEY = 'drug-expiry-tracker-drugs';
 
-// Default drugs for demo purposes
+// Default drugs for demo purposes (with dates relative to current time)
 const defaultDrugs = [
   {
     id: '1',
@@ -10,7 +10,7 @@ const defaultDrugs = [
     genericName: 'Amoxicillin Trihydrate',
     manufacturer: 'Pfizer',
     batchNumber: 'AMX-2024-001',
-    expiryDate: '2024-02-15',
+    expiryDate: '2024-12-15', // Expired
     quantity: 500,
     category: 'Antibiotics',
     notes: 'Store in cool, dry place'
@@ -21,7 +21,7 @@ const defaultDrugs = [
     genericName: 'Acetaminophen',
     manufacturer: 'GSK',
     batchNumber: 'PCT-2024-042',
-    expiryDate: '2025-06-30',
+    expiryDate: '2026-02-15', // Expiring soon (within 90 days)
     quantity: 1000,
     category: 'Pain Relief'
   },
@@ -31,7 +31,7 @@ const defaultDrugs = [
     genericName: 'Ibuprofen',
     manufacturer: 'Advil',
     batchNumber: 'IBU-2024-103',
-    expiryDate: '2026-03-20',
+    expiryDate: '2027-03-20', // Safe
     quantity: 750,
     category: 'Pain Relief'
   },
@@ -41,7 +41,7 @@ const defaultDrugs = [
     genericName: 'Metformin HCl',
     manufacturer: 'Merck',
     batchNumber: 'MET-2024-055',
-    expiryDate: '2025-01-10',
+    expiryDate: '2026-01-20', // Expiring soon
     quantity: 300,
     category: 'Diabetes',
     notes: 'Monitor blood sugar levels'
@@ -52,7 +52,7 @@ const defaultDrugs = [
     genericName: 'Lisinopril',
     manufacturer: 'AstraZeneca',
     batchNumber: 'LIS-2024-078',
-    expiryDate: '2025-08-25',
+    expiryDate: '2025-11-25', // Expired
     quantity: 200,
     category: 'Cardiovascular'
   }
