@@ -61,30 +61,39 @@ jobs:
           
           echo "manifest.json is valid"
 
-      - name: Create extension ZIP
+      - name: Prepare extension for upload
         run: |
           cd extension
           
-          # Create a clean build
-          zip -r ../drug-expiry-tracker-extension.zip . \
-            -x "*.git*" \
-            -x "*.DS_Store" \
-            -x "*.svg" \
-            -x "node_modules/*" \
-            -x "*.map"
+          # Remove files that shouldn't be in the extension
+          rm -f .DS_Store
+          rm -f *.svg 2>/dev/null || true
           
-          echo "Extension ZIP created successfully"
-          
-          # List contents of the ZIP
-          echo "ZIP contents:"
-          unzip -l ../drug-expiry-tracker-extension.zip
+          # List final extension contents
+          echo "Extension contents:"
+          find . -type f | head -50
 
       - name: Upload extension artifact
         uses: actions/upload-artifact@v4
         with:
           name: drug-expiry-tracker-extension
-          path: drug-expiry-tracker-extension.zip
+          path: extension/
           retention-days: 30
+
+      - name: Create Release ZIP (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd extension
+          zip -r ../drug-expiry-tracker-extension.zip .
+          
+      - name: Create Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: drug-expiry-tracker-extension.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Release (on tag)
         if: startsWith(github.ref, 'refs/tags/')
