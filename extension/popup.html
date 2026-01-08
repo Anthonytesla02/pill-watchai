@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drug Expiry Tracker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-content">
+        <div class="logo">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.5 20.5L10 14l-7-7 7-7 7 7-7 7z"/>
+            <path d="M17.5 3.5L21 7l-7 7"/>
+            <path d="M4.5 14.5L8 18"/>
+          </svg>
+          <span>Drug Expiry Tracker</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Stats Section -->
+    <section class="stats-section">
+      <div class="stat-card total">
+        <div class="stat-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.5 20.5L10 14l-7-7 7-7 7 7-7 7z"/>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value" id="total-count">0</span>
+          <span class="stat-label">Total Drugs</span>
+        </div>
+      </div>
+      <div class="stat-card expired">
+        <div class="stat-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="15" y1="9" x2="9" y2="15"/>
+            <line x1="9" y1="9" x2="15" y2="15"/>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value" id="expired-count">0</span>
+          <span class="stat-label">Expired</span>
+        </div>
+      </div>
+      <div class="stat-card expiring">
+        <div class="stat-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value" id="expiring-count">0</span>
+          <span class="stat-label">Expiring Soon</span>
+        </div>
+      </div>
+      <div class="stat-card safe">
+        <div class="stat-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+        </div>
+        <div class="stat-content">
+          <span class="stat-value" id="safe-count">0</span>
+          <span class="stat-label">Safe</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Drug List -->
+    <section class="drug-list-section">
+      <div class="section-header">
+        <h2>Drug Inventory</h2>
+        <button class="btn-add" id="add-drug-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add
+        </button>
+      </div>
+      <div class="drug-list" id="drug-list">
+        <!-- Drug items will be inserted here -->
+      </div>
+    </section>
+
+    <!-- Add/Edit Drug Modal -->
+    <div class="modal" id="drug-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modal-title">Add Drug</h3>
+          <button class="btn-close" id="close-modal">×</button>
+        </div>
+        <form id="drug-form">
+          <input type="hidden" id="drug-id">
+          <div class="form-group">
+            <label for="drug-name">Drug Name *</label>
+            <input type="text" id="drug-name" required placeholder="e.g., Amoxicillin">
+          </div>
+          <div class="form-group">
+            <label for="generic-name">Generic Name</label>
+            <input type="text" id="generic-name" placeholder="e.g., Amoxicillin Trihydrate">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="batch-number">Batch Number *</label>
+              <input type="text" id="batch-number" required placeholder="e.g., AMX-2024-001">
+            </div>
+            <div class="form-group">
+              <label for="expiry-date">Expiry Date *</label>
+              <input type="date" id="expiry-date" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="manufacturer">Manufacturer</label>
+              <input type="text" id="manufacturer" placeholder="e.g., Pfizer">
+            </div>
+            <div class="form-group">
+              <label for="quantity">Quantity</label>
+              <input type="number" id="quantity" min="0" placeholder="e.g., 500">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="category">Category</label>
+            <select id="category">
+              <option value="">Select category</option>
+              <option value="Antibiotics">Antibiotics</option>
+              <option value="Pain Relief">Pain Relief</option>
+              <option value="Diabetes">Diabetes</option>
+              <option value="Cardiovascular">Cardiovascular</option>
+              <option value="Vitamins">Vitamins</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="notes">Notes</label>
+            <textarea id="notes" rows="2" placeholder="Additional notes..."></textarea>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" id="cancel-btn">Cancel</button>
+            <button type="submit" class="btn-primary">Save Drug</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="delete-modal">
+      <div class="modal-content modal-small">
+        <div class="modal-header">
+          <h3>Delete Drug</h3>
+          <button class="btn-close" id="close-delete-modal">×</button>
+        </div>
+        <p class="delete-message">Are you sure you want to delete <strong id="delete-drug-name"></strong>? This action cannot be undone.</p>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancel-delete-btn">Cancel</button>
+          <button type="button" class="btn-danger" id="confirm-delete-btn">Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>Monitoring all input fields for drug mentions</p>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

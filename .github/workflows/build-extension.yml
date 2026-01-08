@@ -1,0 +1,96 @@
+name: Build Chrome Extension
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'extension/**'
+      - '.github/workflows/build-extension.yml'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'extension/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Convert SVG icons to PNG
+        run: |
+          # Install dependencies for SVG to PNG conversion
+          npm install -g sharp-cli
+          
+          cd extension/icons
+          
+          # Convert SVG to PNG for each size
+          for size in 16 32 48 128; do
+            if [ -f "icon${size}.svg" ]; then
+              npx sharp -i "icon${size}.svg" -o "icon${size}.png"
+              echo "Converted icon${size}.svg to PNG"
+            fi
+          done
+          
+          # Clean up SVG files (Chrome only needs PNG)
+          rm -f *.svg
+          
+          cd ../..
+
+      - name: Validate manifest.json
+        run: |
+          cd extension
+          if [ ! -f "manifest.json" ]; then
+            echo "Error: manifest.json not found!"
+            exit 1
+          fi
+          
+          # Validate JSON syntax
+          python3 -c "import json; json.load(open('manifest.json'))" || {
+            echo "Error: manifest.json is not valid JSON!"
+            exit 1
+          }
+          
+          echo "manifest.json is valid"
+
+      - name: Create extension ZIP
+        run: |
+          cd extension
+          
+          # Create a clean build
+          zip -r ../drug-expiry-tracker-extension.zip . \
+            -x "*.git*" \
+            -x "*.DS_Store" \
+            -x "*.svg" \
+            -x "node_modules/*" \
+            -x "*.map"
+          
+          echo "Extension ZIP created successfully"
+          
+          # List contents of the ZIP
+          echo "ZIP contents:"
+          unzip -l ../drug-expiry-tracker-extension.zip
+
+      - name: Upload extension artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: drug-expiry-tracker-extension
+          path: drug-expiry-tracker-extension.zip
+          retention-days: 30
+
+      - name: Create Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: drug-expiry-tracker-extension.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
