@@ -4,6 +4,12 @@
 (function() {
   'use strict';
 
+  // Check if already initialized to prevent duplicate execution
+  if (window.__drugExpiryTrackerInitialized) return;
+  window.__drugExpiryTrackerInitialized = true;
+
+  console.log('Drug Expiry Tracker: Starting initialization...');
+
   // Debounce function to limit API calls
   function debounce(func, wait) {
     let timeout;
@@ -20,10 +26,13 @@
   // Track shown notifications to avoid duplicates
   const shownNotifications = new Set();
   let notificationContainer = null;
+  const processedInputs = new WeakSet();
 
   // Create notification container
   function createNotificationContainer() {
-    if (notificationContainer) return notificationContainer;
+    if (notificationContainer && document.body.contains(notificationContainer)) {
+      return notificationContainer;
+    }
 
     notificationContainer = document.createElement('div');
     notificationContainer.id = 'drug-expiry-tracker-notifications';
@@ -76,7 +85,7 @@
       min-width: 300px;
       max-width: 400px;
       box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-      animation: slideIn 0.3s ease-out;
+      animation: drugExpirySlideIn 0.3s ease-out;
       pointer-events: auto;
       cursor: pointer;
     `;
@@ -119,7 +128,7 @@
     // Auto-remove after 5 seconds
     setTimeout(() => {
       if (notification.parentNode) {
-        notification.style.animation = 'slideOut 0.3s ease-in forwards';
+        notification.style.animation = 'drugExpirySlideOut 0.3s ease-in forwards';
         setTimeout(() => {
           notification.remove();
           shownNotifications.delete(notificationId);
@@ -129,7 +138,7 @@
 
     // Click to dismiss
     notification.addEventListener('click', () => {
-      notification.style.animation = 'slideOut 0.3s ease-in forwards';
+      notification.style.animation = 'drugExpirySlideOut 0.3s ease-in forwards';
       setTimeout(() => {
         notification.remove();
         shownNotifications.delete(notificationId);
@@ -144,7 +153,7 @@
     const style = document.createElement('style');
     style.id = 'drug-expiry-tracker-styles';
     style.textContent = `
-      @keyframes slideIn {
+      @keyframes drugExpirySlideIn {
         from {
           transform: translateX(100%);
           opacity: 0;
@@ -154,7 +163,7 @@
           opacity: 1;
         }
       }
-      @keyframes slideOut {
+      @keyframes drugExpirySlideOut {
         from {
           transform: translateX(0);
           opacity: 1;
@@ -173,12 +182,25 @@
     return text.toLowerCase().split(/\s+/).filter(word => word.length >= 3);
   }
 
+  // Check if extension context is still valid
+  function isExtensionContextValid() {
+    try {
+      return chrome.runtime && chrome.runtime.id;
+    } catch (e) {
+      return false;
+    }
+  }
+
   // Check input value for drug matches
-  const checkForDrugs = debounce(async (value) => {
+  async function checkDrugsForText(value) {
     if (!value || value.length < 3) return;
+    if (!isExtensionContextValid()) {
+      console.log('Drug Expiry Tracker: Extension context invalidated');
+      return;
+    }
 
     // Check both the full text and individual words
-    const wordsToCheck = [value, ...extractWords(value)];
+    const wordsToCheck = new Set([value.toLowerCase(), ...extractWords(value)]);
     
     for (const word of wordsToCheck) {
       if (word.length < 3) continue;
@@ -195,53 +217,128 @@
           alertDrugs.forEach(drug => createNotification(drug));
         }
       } catch (error) {
+        // Extension context might be invalidated, log but don't spam
+        if (error.message && error.message.includes('Extension context invalidated')) {
+          console.log('Drug Expiry Tracker: Extension was reloaded, please refresh the page');
+          return;
+        }
         console.error('Drug Expiry Tracker: Error checking drugs', error);
       }
     }
-  }, 300);
+  }
+
+  const debouncedCheck = debounce(checkDrugsForText, 300);
+
+  // Get the value from an input element
+  function getInputValue(element) {
+    if (!element) return '';
+    
+    // Standard input/textarea
+    if (element.value !== undefined) {
+      return element.value;
+    }
+    
+    // ContentEditable
+    if (element.isContentEditable) {
+      return element.textContent || element.innerText || '';
+    }
+    
+    return '';
+  }
 
   // Handle input events
-  function handleInput(event) {
+  function handleInputEvent(event) {
     const target = event.target;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-      const value = target.value || target.textContent || '';
-      checkForDrugs(value);
+    if (!target) return;
+    
+    const value = getInputValue(target);
+    if (value) {
+      debouncedCheck(value);
     }
+  }
+
+  // Attach listeners to a single input element
+  function attachListenersToInput(input) {
+    if (!input || processedInputs.has(input)) return;
+    processedInputs.add(input);
+    
+    input.addEventListener('input', handleInputEvent, { passive: true });
+    input.addEventListener('keyup', handleInputEvent, { passive: true });
+    input.addEventListener('paste', (e) => {
+      setTimeout(() => handleInputEvent(e), 0);
+    }, { passive: true });
+  }
+
+  // Find and attach listeners to all inputs on the page
+  function attachListenersToAllInputs() {
+    const inputs = document.querySelectorAll('input, textarea, [contenteditable="true"]');
+    inputs.forEach(attachListenersToInput);
+  }
+
+  // Handle document-level events for dynamically created inputs
+  function setupGlobalListeners() {
+    // Capture phase to catch events before they're stopped
+    document.addEventListener('input', handleInputEvent, { capture: true, passive: true });
+    document.addEventListener('keyup', handleInputEvent, { capture: true, passive: true });
+    
+    // Focus event to catch newly focused inputs
+    document.addEventListener('focus', (event) => {
+      const target = event.target;
+      if (target && (
+        target.tagName === 'INPUT' || 
+        target.tagName === 'TEXTAREA' || 
+        target.isContentEditable
+      )) {
+        attachListenersToInput(target);
+      }
+    }, { capture: true, passive: true });
+  }
+
+  // Setup MutationObserver for dynamically added elements
+  function setupMutationObserver() {
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType !== Node.ELEMENT_NODE) continue;
+          
+          // Check if the node itself is an input
+          if (node.tagName === 'INPUT' || node.tagName === 'TEXTAREA' || node.isContentEditable) {
+            attachListenersToInput(node);
+          }
+          
+          // Check for inputs within the node
+          if (node.querySelectorAll) {
+            const inputs = node.querySelectorAll('input, textarea, [contenteditable="true"]');
+            inputs.forEach(attachListenersToInput);
+          }
+        }
+      }
+    });
+
+    observer.observe(document.documentElement, { 
+      childList: true, 
+      subtree: true 
+    });
   }
 
   // Initialize
   function init() {
-    addStyles();
-    
-    // Listen for input events on all input fields
-    document.addEventListener('input', handleInput, true);
-    document.addEventListener('keyup', handleInput, true);
-
-    // Also observe for dynamically added inputs
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === Node.ELEMENT_NODE) {
-            const inputs = node.querySelectorAll ? 
-              node.querySelectorAll('input, textarea, [contenteditable="true"]') : [];
-            inputs.forEach(input => {
-              input.addEventListener('input', handleInput);
-              input.addEventListener('keyup', handleInput);
-            });
-          }
-        });
-      });
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    console.log('Drug Expiry Tracker: Content script initialized');
+    try {
+      addStyles();
+      setupGlobalListeners();
+      attachListenersToAllInputs();
+      setupMutationObserver();
+      console.log('Drug Expiry Tracker: Content script initialized successfully');
+    } catch (error) {
+      console.error('Drug Expiry Tracker: Failed to initialize', error);
+    }
   }
 
   // Wait for DOM to be ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
-    init();
+    // Small delay to ensure body exists
+    setTimeout(init, 0);
   }
 })();
