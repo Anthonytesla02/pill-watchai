@@ -75,6 +75,18 @@
       </div>
     </section>
 
+    <!-- Inventory Value Stats -->
+    <section class="value-stats-section">
+      <div class="value-stat">
+        <span class="value-label">Total Inventory Value</span>
+        <span class="value-amount" id="total-value">$0.00</span>
+      </div>
+      <div class="value-stat expiring">
+        <span class="value-label">At Risk Value</span>
+        <span class="value-amount" id="expiring-value">$0.00</span>
+      </div>
+    </section>
+
     <!-- Drug List -->
     <section class="drug-list-section">
       <div class="section-header">
@@ -129,17 +141,33 @@
               <input type="number" id="quantity" min="0" placeholder="e.g., 500">
             </div>
           </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="unit-price">Unit Price ($)</label>
+              <input type="number" id="unit-price" min="0" step="0.01" placeholder="e.g., 0.50">
+            </div>
+            <div class="form-group">
+              <label for="category">Category</label>
+              <select id="category">
+                <option value="">Select category</option>
+                <option value="Antibiotics">Antibiotics</option>
+                <option value="Pain Relief">Pain Relief</option>
+                <option value="Diabetes">Diabetes</option>
+                <option value="Cardiovascular">Cardiovascular</option>
+                <option value="Vitamins">Vitamins</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
           <div class="form-group">
-            <label for="category">Category</label>
-            <select id="category">
-              <option value="">Select category</option>
-              <option value="Antibiotics">Antibiotics</option>
-              <option value="Pain Relief">Pain Relief</option>
-              <option value="Diabetes">Diabetes</option>
-              <option value="Cardiovascular">Cardiovascular</option>
-              <option value="Vitamins">Vitamins</option>
-              <option value="Other">Other</option>
-            </select>
+            <label for="aliases">Aliases / Synonyms</label>
+            <input type="text" id="aliases" placeholder="e.g., Amox, Amoxil Generic (comma separated)">
+            <span class="form-hint">Separate multiple aliases with commas</span>
+          </div>
+          <div class="form-group">
+            <label for="brand-names">Brand Names</label>
+            <input type="text" id="brand-names" placeholder="e.g., Amoxil (GSK), Trimox (Sandoz)">
+            <span class="form-hint">Format: Brand Name (Manufacturer), separated by commas</span>
           </div>
           <div class="form-group">
             <label for="notes">Notes</label>
