@@ -1,17 +1,29 @@
 import { useState } from 'react';
-import { Package, AlertTriangle, XCircle, CheckCircle } from 'lucide-react';
-import { useDrugs } from '@/hooks/useDrugs';
+import { Package, AlertTriangle, XCircle, CheckCircle, DollarSign, Download, Upload, LogOut, User } from 'lucide-react';
+import { useDrugsDB } from '@/hooks/useDrugsDB';
+import { useAuth } from '@/contexts/AuthContext';
 import { Drug, DrugFormData } from '@/types/drug';
-import { Header } from '@/components/dashboard/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { DrugTable } from '@/components/dashboard/DrugTable';
 import { DrugFormDialog } from '@/components/dashboard/DrugFormDialog';
 import { DeleteConfirmDialog } from '@/components/dashboard/DeleteConfirmDialog';
 import { ExtensionDemo } from '@/components/dashboard/ExtensionDemo';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Pill, Plus, Chrome } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const Index = () => {
-  const { drugs, isLoading, addDrug, updateDrug, deleteDrug, getDrugStatus, getStats } = useDrugs();
+  const { drugs, isLoading, addDrug, updateDrug, deleteDrug, getDrugStatus, getStats, exportDrugs } = useDrugsDB();
+  const { user, profile, signOut } = useAuth();
   const { toast } = useToast();
   
   const [formOpen, setFormOpen] = useState(false);
@@ -40,9 +52,9 @@ const Index = () => {
     }
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (drugToDelete) {
-      deleteDrug(drugToDelete.id);
+      await deleteDrug(drugToDelete.id);
       toast({
         title: 'Drug Deleted',
         description: `${drugToDelete.name} has been removed from the tracker.`,
@@ -52,20 +64,36 @@ const Index = () => {
     }
   };
 
-  const handleFormSubmit = (data: DrugFormData) => {
+  const handleFormSubmit = async (data: DrugFormData) => {
     if (editingDrug) {
-      updateDrug(editingDrug.id, data);
+      await updateDrug(editingDrug.id, data);
       toast({
         title: 'Drug Updated',
         description: `${data.name} has been updated successfully.`,
       });
     } else {
-      addDrug(data);
+      await addDrug(data);
       toast({
         title: 'Drug Added',
         description: `${data.name} has been added to the tracker.`,
       });
     }
+  };
+
+  const handleExport = () => {
+    exportDrugs();
+    toast({
+      title: 'Export Complete',
+      description: 'Your drug inventory has been exported to CSV.',
+    });
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    toast({
+      title: 'Signed Out',
+      description: 'You have been signed out successfully.',
+    });
   };
 
   if (isLoading) {
@@ -77,8 +105,64 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header onAddDrug={handleAddDrug} onShowExtension={() => setExtensionDemoOpen(true)} />
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      {/* Header */}
+      <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-40">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg shadow-primary/25">
+                <Pill className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold font-display tracking-tight">Drug Expiry Tracker</h1>
+                <p className="text-sm text-muted-foreground">Professional pharmacy inventory</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="sm" onClick={handleExport} className="gap-2">
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setExtensionDemoOpen(true)} className="gap-2">
+                <Chrome className="h-4 w-4" />
+                Extension
+              </Button>
+              <Button onClick={handleAddDrug} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Drug
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+                    <Avatar className="h-9 w-9">
+                      <AvatarFallback className="bg-primary/10 text-primary font-medium">
+                        {profile?.display_name?.charAt(0) || user?.email?.charAt(0)?.toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{profile?.display_name || 'User'}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                      {profile?.pharmacy_name && (
+                        <p className="text-xs text-muted-foreground">{profile.pharmacy_name}</p>
+                      )}
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
+        </div>
+      </header>
       
       <main className="container mx-auto px-4 py-8">
         {/* Stats Grid */}

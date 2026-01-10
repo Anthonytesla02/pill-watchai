@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AlertTriangle, X, Pill, Chrome, ExternalLink } from 'lucide-react';
+import { AlertTriangle, X, Pill, Chrome } from 'lucide-react';
 import { Drug } from '@/types/drug';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,11 +36,11 @@ export function ExtensionDemo({ open, onOpenChange, drugs, getDrugStatus }: Exte
     const matchedDrug = drugs.find(
       drug =>
         drug.name.toLowerCase().includes(searchTerm) ||
-        drug.genericName.toLowerCase().includes(searchTerm)
+        drug.generic_name.toLowerCase().includes(searchTerm)
     );
 
     if (matchedDrug) {
-      const status = getDrugStatus(matchedDrug.expiryDate);
+      const status = getDrugStatus(matchedDrug.expiry_date);
       const existingToast = toasts.find(t => t.drug.id === matchedDrug.id);
       
       if (!existingToast && (status === 'expired' || status === 'expiring')) {
@@ -155,12 +155,12 @@ export function ExtensionDemo({ open, onOpenChange, drugs, getDrugStatus }: Exte
                             </span>
                           ) : (
                             <span className="text-expiring font-medium">
-                              ⚠️ Expiring on {format(new Date(toast.drug.expiryDate), 'MMM dd, yyyy')}
+                              ⚠️ Expiring on {format(new Date(toast.drug.expiry_date), 'MMM dd, yyyy')}
                             </span>
                           )}
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Batch: {toast.drug.batchNumber} • {toast.drug.manufacturer}
+                          Batch: {toast.drug.batch_number} • {toast.drug.manufacturer}
                         </p>
                       </div>
                     </div>
@@ -175,7 +175,7 @@ export function ExtensionDemo({ open, onOpenChange, drugs, getDrugStatus }: Exte
             <p className="text-sm text-muted-foreground mb-2">Try typing these drugs:</p>
             <div className="flex flex-wrap justify-center gap-2">
               {drugs.slice(0, 5).map(drug => {
-                const status = getDrugStatus(drug.expiryDate);
+                const status = getDrugStatus(drug.expiry_date);
                 return (
                   <button
                     key={drug.id}
