@@ -1,5 +1,5 @@
 // Drug Expiry Tracker - Content Script
-// Monitors input fields and shows alerts for matching drugs
+// Monitors input fields and shows alerts for matching drugs (including aliases and brand names)
 
 (function() {
   'use strict';
@@ -51,6 +51,22 @@
     return notificationContainer;
   }
 
+  // Format aliases and brand names for display
+  function formatAlternativeNames(drug) {
+    const parts = [];
+    
+    if (drug.aliases && drug.aliases.length > 0) {
+      parts.push(`Also known as: ${drug.aliases.slice(0, 2).join(', ')}${drug.aliases.length > 2 ? '...' : ''}`);
+    }
+    
+    if (drug.brandNames && drug.brandNames.length > 0) {
+      const brandDisplay = drug.brandNames.slice(0, 2).map(b => b.name).join(', ');
+      parts.push(`Brands: ${brandDisplay}${drug.brandNames.length > 2 ? '...' : ''}`);
+    }
+    
+    return parts.join(' • ');
+  }
+
   // Create a notification toast
   function createNotification(drug) {
     const notificationId = `${drug.id}-${drug.status}`;
@@ -75,6 +91,8 @@
       : isExpiring 
       ? `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`
       : `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${iconColor}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`;
+
+    const alternativeNames = formatAlternativeNames(drug);
 
     notification.style.cssText = `
       background: ${bgColor};
@@ -102,11 +120,12 @@
                 ${isExpired ? '⚠️ Drug Expired' : isExpiring ? '⏰ Drug Expiring Soon' : '✓ Drug Safe'}
               </h4>
               <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 500; color: ${textColor};">
-                ${drug.name}
+                ${drug.name}${drug.genericName ? ` (${drug.genericName})` : ''}
               </p>
               <p style="margin: 0; font-size: 12px; color: ${textColor}; opacity: 0.8;">
                 ${drug.statusText} • Batch: ${drug.batchNumber}
               </p>
+              ${alternativeNames ? `<p style="margin: 4px 0 0 0; font-size: 11px; color: ${textColor}; opacity: 0.7;">${alternativeNames}</p>` : ''}
             </div>
             <button style="
               background: transparent;
@@ -125,7 +144,7 @@
 
     container.appendChild(notification);
 
-    // Auto-remove after 5 seconds
+    // Auto-remove after 6 seconds
     setTimeout(() => {
       if (notification.parentNode) {
         notification.style.animation = 'drugExpirySlideOut 0.3s ease-in forwards';
@@ -134,7 +153,7 @@
           shownNotifications.delete(notificationId);
         }, 300);
       }
-    }, 5000);
+    }, 6000);
 
     // Click to dismiss
     notification.addEventListener('click', () => {
@@ -328,7 +347,7 @@
       setupGlobalListeners();
       attachListenersToAllInputs();
       setupMutationObserver();
-      console.log('Drug Expiry Tracker: Content script initialized successfully');
+      console.log('Drug Expiry Tracker: Content script initialized successfully (with aliases and brand names support)');
     } catch (error) {
       console.error('Drug Expiry Tracker: Failed to initialize', error);
     }
