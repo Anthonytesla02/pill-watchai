@@ -14,7 +14,180 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      drug_aliases: {
+        Row: {
+          alias: string
+          created_at: string | null
+          drug_id: string
+          id: string
+        }
+        Insert: {
+          alias: string
+          created_at?: string | null
+          drug_id: string
+          id?: string
+        }
+        Update: {
+          alias?: string
+          created_at?: string | null
+          drug_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drug_aliases_drug_id_fkey"
+            columns: ["drug_id"]
+            isOneToOne: false
+            referencedRelation: "drugs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drug_brand_names: {
+        Row: {
+          brand_manufacturer: string | null
+          brand_name: string
+          created_at: string | null
+          drug_id: string
+          id: string
+        }
+        Insert: {
+          brand_manufacturer?: string | null
+          brand_name: string
+          created_at?: string | null
+          drug_id: string
+          id?: string
+        }
+        Update: {
+          brand_manufacturer?: string | null
+          brand_name?: string
+          created_at?: string | null
+          drug_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drug_brand_names_drug_id_fkey"
+            columns: ["drug_id"]
+            isOneToOne: false
+            referencedRelation: "drugs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      drugs: {
+        Row: {
+          batch_number: string
+          category: string | null
+          category_id: string | null
+          created_at: string | null
+          expiry_date: string
+          generic_name: string
+          id: string
+          manufacturer: string
+          name: string
+          notes: string | null
+          quantity: number
+          unit_price: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          batch_number: string
+          category?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          expiry_date: string
+          generic_name: string
+          id?: string
+          manufacturer: string
+          name: string
+          notes?: string | null
+          quantity?: number
+          unit_price?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          batch_number?: string
+          category?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          expiry_date?: string
+          generic_name?: string
+          id?: string
+          manufacturer?: string
+          name?: string
+          notes?: string | null
+          quantity?: number
+          unit_price?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drugs_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          display_name: string | null
+          id: string
+          pharmacy_name: string | null
+          role: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id: string
+          pharmacy_name?: string | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          id?: string
+          pharmacy_name?: string | null
+          role?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
