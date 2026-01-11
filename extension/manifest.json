@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Drug Expiry Tracker",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Smart drug expiry tracker that alerts you when typing drug names that are expired or expiring soon",
   "permissions": [
     "storage",
