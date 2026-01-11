@@ -81,6 +81,7 @@
     const isExpired = drug.status === 'expired';
     const isExpiring = drug.status === 'expiring';
     
+    // Keep styling self-contained in content script (no app CSS dependency)
     const bgColor = isExpired ? '#FEE2E2' : isExpiring ? '#FEF3C7' : '#D1FAE5';
     const borderColor = isExpired ? '#EF4444' : isExpiring ? '#F59E0B' : '#10B981';
     const textColor = isExpired ? '#991B1B' : isExpiring ? '#92400E' : '#065F46';

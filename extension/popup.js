@@ -2,6 +2,20 @@
 
 document.addEventListener('DOMContentLoaded', async () => {
   // Elements
+  const mainUi = document.getElementById('main-ui');
+
+  // Auth UI
+  const authSignedOut = document.getElementById('auth-signed-out');
+  const authSignedIn = document.getElementById('auth-signed-in');
+  const authForm = document.getElementById('auth-form');
+  const authEmail = document.getElementById('auth-email');
+  const authPassword = document.getElementById('auth-password');
+  const authError = document.getElementById('auth-error');
+  const btnLocalMode = document.getElementById('btn-local-mode');
+  const btnSignOut = document.getElementById('btn-sign-out');
+  const btnSync = document.getElementById('btn-sync');
+
+  // Stats
   const drugList = document.getElementById('drug-list');
   const totalCount = document.getElementById('total-count');
   const expiredCount = document.getElementById('expired-count');
@@ -9,7 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const safeCount = document.getElementById('safe-count');
   const totalValue = document.getElementById('total-value');
   const expiringValue = document.getElementById('expiring-value');
-  
+
   // Modal elements
   const drugModal = document.getElementById('drug-modal');
   const deleteModal = document.getElementById('delete-modal');
@@ -25,31 +39,91 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let currentDeleteId = null;
 
-  // Load initial data
-  await loadDrugs();
-  await loadStats();
+  // -----
+  // Auth + Mode
+  // -----
 
-  // Event listeners
-  addDrugBtn.addEventListener('click', () => openAddModal());
-  closeModalBtn.addEventListener('click', () => closeModal());
-  cancelBtn.addEventListener('click', () => closeModal());
-  closeDeleteModalBtn.addEventListener('click', () => closeDeleteModal());
-  cancelDeleteBtn.addEventListener('click', () => closeDeleteModal());
-  confirmDeleteBtn.addEventListener('click', () => confirmDelete());
-  drugForm.addEventListener('submit', handleSubmit);
+  function setAuthError(message) {
+    authError.textContent = message || '';
+    authError.style.display = message ? 'block' : 'none';
+  }
 
-  // Close modals on backdrop click
-  drugModal.addEventListener('click', (e) => {
-    if (e.target === drugModal) closeModal();
+  async function refreshAuthState() {
+    const state = await chrome.runtime.sendMessage({ type: 'GET_AUTH_STATE' });
+    const signedIn = !!state?.signedIn && state?.mode === 'cloud';
+
+    authSignedOut.style.display = signedIn ? 'none' : 'block';
+    authSignedIn.style.display = signedIn ? 'block' : 'none';
+    mainUi.style.display = 'block'; // always show UI; data source depends on mode
+
+    if (signedIn) {
+      setAuthError('');
+      await reloadAll();
+    } else {
+      // in local mode (or signed out)
+      await reloadAll();
+    }
+  }
+
+  authForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    setAuthError('');
+
+    const email = authEmail.value.trim();
+    const password = authPassword.value;
+
+    if (!email || !password) {
+      setAuthError('Email and password are required.');
+      return;
+    }
+
+    const btn = document.getElementById('btn-sign-in');
+    btn.disabled = true;
+    btn.textContent = 'Signing in...';
+
+    try {
+      const res = await chrome.runtime.sendMessage({ type: 'SIGN_IN', email, password });
+      if (!res?.ok) {
+        setAuthError(res?.error || 'Sign in failed.');
+      }
+    } catch (err) {
+      setAuthError(err?.message || 'Sign in failed.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Sign in';
+      authPassword.value = '';
+      await refreshAuthState();
+    }
   });
-  deleteModal.addEventListener('click', (e) => {
-    if (e.target === deleteModal) closeDeleteModal();
+
+  btnLocalMode.addEventListener('click', async () => {
+    await chrome.runtime.sendMessage({ type: 'SET_MODE', mode: 'local' });
+    setAuthError('');
+    await refreshAuthState();
   });
 
-  // Functions
+  btnSignOut.addEventListener('click', async () => {
+    await chrome.runtime.sendMessage({ type: 'SIGN_OUT' });
+    setAuthError('');
+    await refreshAuthState();
+  });
+
+  btnSync.addEventListener('click', async () => {
+    await reloadAll();
+  });
+
+  // -----
+  // Data rendering
+  // -----
+
+  async function reloadAll() {
+    await loadDrugs();
+    await loadStats();
+  }
+
   async function loadDrugs() {
     const drugs = await chrome.runtime.sendMessage({ type: 'GET_DRUGS' });
-    renderDrugList(drugs || []);
+    renderDrugList(Array.isArray(drugs) ? drugs : []);
   }
 
   async function loadStats() {
@@ -79,20 +153,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // Sort by status: expired first, then expiring, then safe
     const statusOrder = { expired: 0, expiring: 1, safe: 2 };
     const sortedDrugs = [...drugs].sort((a, b) => statusOrder[a.status] - statusOrder[b.status]);
 
-    drugList.innerHTML = sortedDrugs.map(drug => {
-      const aliasesText = drug.aliases && drug.aliases.length > 0 
-        ? `<span class="drug-aliases">Also: ${drug.aliases.slice(0, 2).map(a => escapeHtml(a)).join(', ')}${drug.aliases.length > 2 ? '...' : ''}</span>` 
-        : '';
-      
-      const brandNamesText = drug.brandNames && drug.brandNames.length > 0
-        ? `<span class="drug-brands">${drug.brandNames.slice(0, 2).map(b => escapeHtml(b.name)).join(', ')}${drug.brandNames.length > 2 ? '...' : ''}</span>`
-        : '';
+    drugList.innerHTML = sortedDrugs
+      .map((drug) => {
+        const aliasesText =
+          drug.aliases && drug.aliases.length > 0
+            ? `<span class="drug-aliases">Also: ${drug.aliases
+                .slice(0, 2)
+                .map((a) => escapeHtml(a))
+                .join(', ')}${drug.aliases.length > 2 ? '...' : ''}</span>`
+            : '';
 
-      return `
+        const brandNamesText =
+          drug.brandNames && drug.brandNames.length > 0
+            ? `<span class="drug-brands">${drug.brandNames
+                .slice(0, 2)
+                .map((b) => escapeHtml(b.name))
+                .join(', ')}${drug.brandNames.length > 2 ? '...' : ''}</span>`
+            : '';
+
+        return `
         <div class="drug-item" data-id="${drug.id}">
           <div class="drug-info">
             <div class="drug-status-indicator ${drug.status}"></div>
@@ -118,17 +200,17 @@ document.addEventListener('DOMContentLoaded', async () => {
           </div>
         </div>
       `;
-    }).join('');
+      })
+      .join('');
 
-    // Add event listeners for action buttons
-    drugList.querySelectorAll('[data-action]').forEach(btn => {
+    drugList.querySelectorAll('[data-action]').forEach((btn) => {
       btn.addEventListener('click', async (e) => {
         const action = e.currentTarget.dataset.action;
         const id = e.currentTarget.dataset.id;
-        
+
         if (action === 'edit') {
           const drugs = await chrome.runtime.sendMessage({ type: 'GET_DRUGS' });
-          const drug = drugs.find(d => d.id === id);
+          const drug = Array.isArray(drugs) ? drugs.find((d) => d.id === id) : null;
           if (drug) openEditModal(drug);
         } else if (action === 'delete') {
           const name = e.currentTarget.dataset.name;
@@ -137,6 +219,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     });
   }
+
+  // -----
+  // Modals + CRUD
+  // -----
+
+  addDrugBtn.addEventListener('click', () => openAddModal());
+  closeModalBtn.addEventListener('click', () => closeModal());
+  cancelBtn.addEventListener('click', () => closeModal());
+  closeDeleteModalBtn.addEventListener('click', () => closeDeleteModal());
+  cancelDeleteBtn.addEventListener('click', () => closeDeleteModal());
+  confirmDeleteBtn.addEventListener('click', () => confirmDelete());
+  drugForm.addEventListener('submit', handleSubmit);
+
+  drugModal.addEventListener('click', (e) => {
+    if (e.target === drugModal) closeModal();
+  });
+  deleteModal.addEventListener('click', (e) => {
+    if (e.target === deleteModal) closeDeleteModal();
+  });
 
   function openAddModal() {
     modalTitle.textContent = 'Add Drug';
@@ -157,17 +258,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('unit-price').value = drug.unitPrice || '';
     document.getElementById('category').value = drug.category || '';
     document.getElementById('notes').value = drug.notes || '';
-    
-    // Handle aliases
+
     const aliases = drug.aliases && Array.isArray(drug.aliases) ? drug.aliases.join(', ') : '';
     document.getElementById('aliases').value = aliases;
-    
-    // Handle brand names - format as "Name (Manufacturer)"
-    const brandNames = drug.brandNames && Array.isArray(drug.brandNames) 
-      ? drug.brandNames.map(b => b.manufacturer ? `${b.name} (${b.manufacturer})` : b.name).join(', ')
-      : '';
+
+    const brandNames =
+      drug.brandNames && Array.isArray(drug.brandNames)
+        ? drug.brandNames
+            .map((b) => (b.manufacturer ? `${b.name} (${b.manufacturer})` : b.name))
+            .join(', ')
+        : '';
     document.getElementById('brand-names').value = brandNames;
-    
+
     drugModal.classList.add('active');
   }
 
@@ -189,36 +291,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   async function confirmDelete() {
     if (!currentDeleteId) return;
-    
     await chrome.runtime.sendMessage({ type: 'DELETE_DRUG', id: currentDeleteId });
     closeDeleteModal();
-    await loadDrugs();
-    await loadStats();
+    await reloadAll();
   }
 
-  // Parse brand names from string format "Name (Manufacturer), Name2 (Manufacturer2)"
   function parseBrandNames(brandNamesStr) {
     if (!brandNamesStr || !brandNamesStr.trim()) return [];
-    
-    return brandNamesStr.split(',').map(item => {
-      const trimmed = item.trim();
-      const match = trimmed.match(/^(.+?)\s*\((.+?)\)$/);
-      if (match) {
-        return { name: match[1].trim(), manufacturer: match[2].trim() };
-      }
-      return { name: trimmed, manufacturer: '' };
-    }).filter(b => b.name);
+
+    return brandNamesStr
+      .split(',')
+      .map((item) => {
+        const trimmed = item.trim();
+        const match = trimmed.match(/^(.+?)\s*\((.+?)\)$/);
+        if (match) {
+          return { name: match[1].trim(), manufacturer: match[2].trim() };
+        }
+        return { name: trimmed, manufacturer: '' };
+      })
+      .filter((b) => b.name);
   }
 
-  // Parse aliases from comma-separated string
   function parseAliases(aliasesStr) {
     if (!aliasesStr || !aliasesStr.trim()) return [];
-    return aliasesStr.split(',').map(a => a.trim()).filter(a => a);
+    return aliasesStr
+      .split(',')
+      .map((a) => a.trim())
+      .filter((a) => a);
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    
+
     const id = document.getElementById('drug-id').value;
     const drugData = {
       name: document.getElementById('drug-name').value.trim(),
@@ -231,7 +335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       category: document.getElementById('category').value,
       notes: document.getElementById('notes').value.trim(),
       aliases: parseAliases(document.getElementById('aliases').value),
-      brandNames: parseBrandNames(document.getElementById('brand-names').value)
+      brandNames: parseBrandNames(document.getElementById('brand-names').value),
     };
 
     if (id) {
@@ -241,8 +345,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     closeModal();
-    await loadDrugs();
-    await loadStats();
+    await reloadAll();
   }
 
   function escapeHtml(text) {
@@ -250,4 +353,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     div.textContent = text;
     return div.innerHTML;
   }
+
+  // Init
+  await refreshAuthState();
 });
